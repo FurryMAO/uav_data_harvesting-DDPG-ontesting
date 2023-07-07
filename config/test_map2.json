@@ -1,0 +1,102 @@
+{
+    "model_stats_params": {
+        "save_model": "models/test_map2",
+        "moving_average_length": 100,
+        "log_file_name": "test_map2",
+        "training_images": false
+    },
+    "grid_params": {
+        "fixed_starting_idcs": false,
+        "starting_position": [[8,2]],
+        "movement_range": [
+            80,
+            120
+        ],
+        "map_path": "res/test_map2.png",
+        "num_agents_range": [
+            1,
+            3
+        ],
+        "device_manager": {
+            "device_count_range": [
+                5,
+                6
+            ],
+            "data_range": [
+                1.0,
+                25.0
+            ],
+            "fixed_devices": true,
+            "devices": {
+                "position": [
+                    [5, 3],[7, 12],[14,5],[9,8]]
+                ,
+                "data": [15.0,10.0,20.0,15.0],
+                "color": ["magenta","lightpink","aqua","blue"]
+            }
+        },
+
+        "jammer_manager": {
+            "fixed_jammers": false,
+            "jammer_count_range": [
+                1,
+                3
+            ],
+            "power_range": [
+                150,
+                200
+            ]
+        },
+        "multi_agent": false
+    },
+     "reward_params": {
+        "boundary_penalty": 1.0,
+        "empty_battery_penalty": 100.0,
+        "data_multiplier": 1.0,
+        "movement_penalty": 0.1
+    },
+
+    "trainer_params": {
+        "batch_size": 128,
+        "num_steps": 4e5,
+        "rm_pre_fill_ratio": 0.5,
+        "rm_pre_fill_random": true,
+        "eval_period": 5,
+        "rm_size": 50000,
+        "load_model": ""
+    },
+
+    "ddpg_agent_params": {
+        "conv_layers": 2,
+        "conv_kernel_size": 5,
+        "conv_kernels": 16,
+        "hidden_layer_size": 256,
+        "hidden_layer_num": 3,
+        "actor_learning_rate": 3e-05,
+        "critic_learning_rate": 3e-04,
+        "rm_size": 50000,
+        "alpha": 0.005,
+        "gamma": 0.95,
+        "var": 0.01,
+        "soft_max_scaling": 0.1,
+        "global_map_scaling": 3,
+        "local_map_size": 10,
+        "print_summary": true,
+        "use_scalar_input": false,
+        "blind_agent": false
+
+    },
+    "physics_params": {
+        "channel_params": {
+            "cell_edge_snr": -25,
+            "los_path_loss_exp": 2.27,
+            "nlos_path_loss_exp": 3.64,
+            "uav_altitude": 10.0,
+            "cell_size": 10.0,
+            "los_shadowing_variance": 2.0,
+            "nlos_shadowing_variance": 5.0,
+            "map_path": "res/test_map2.png"
+        },
+        "comm_steps": 4
+    }
+}
