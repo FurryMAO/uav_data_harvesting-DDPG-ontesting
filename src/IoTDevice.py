@@ -80,6 +80,7 @@ class DeviceList:
         return data_map
 
     def get_best_data_rate(self, pos, channel: Channel):
+        #print("pos=", pos)
         """
         Get the best data rate and the corresponding device index
         """

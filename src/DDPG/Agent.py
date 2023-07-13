@@ -1,8 +1,8 @@
+import pdb
+
 import tensorflow as tf
 from tensorflow.keras import Model
-from tensorflow.keras.layers import Conv2D, Dense, Flatten, Concatenate, Input, AvgPool2D
-from src.State import State
-
+from tensorflow.keras.layers import Conv2D, Dense, Flatten, Concatenate, Input, AvgPool2D, BatchNormalization
 import numpy as np
 
 
@@ -62,9 +62,11 @@ class DDPGAgent(object):
         self.w_init = tf.random_normal_initializer(mean=0, stddev=0.3)
         self.b_init = tf.constant_initializer(0.1)
         self.var=self.params.var
+        self.c_loss=0.0
+        self.a_loss=0.0
 
         # Create shared inputs
-        action_input = Input(shape=self.num_actions , name='action_input', dtype=tf.float32)
+        action_input = Input(shape=self.num_actions, name='action_input', dtype=tf.float32)
         reward_input = Input(shape=(), name='reward_input', dtype=tf.float32)
         termination_input = Input(shape=(), name='termination_input', dtype=tf.bool)
         q_star_input = Input(shape=(), name='q_star_input', dtype=tf.float32)
@@ -96,13 +98,10 @@ class DDPGAgent(object):
                       float_map_input,
                       scalars_input]
 
-
-
-            self.a_network=self.build_actor_model(states,'eval_a')
+            self.a_network = self.build_actor_model(states, 'eval_a')
             self.targeta_network = self.build_actor_model(states, 'target_a')
-            self.q_network = self.build_critic_model(states, action_input,'eval_c')
+            self.q_network = self.build_critic_model(states, action_input, 'eval_c')
             self.targetq_network = self.build_critic_model(states, action_input, 'target_c')
-
             self.hard_update()
 
             self.global_map_model = Model(inputs=[boolean_map_input, float_map_input],
@@ -112,35 +111,30 @@ class DDPGAgent(object):
             self.total_map_model = Model(inputs=[boolean_map_input, float_map_input],
                                          outputs=self.total_map)
 
-        a_values=self.a_network.output
-        a_target_values=self.targeta_network.output
-        q_values = self.q_network.output
-        q_target_values = self.targetq_network.output
-
-
-
-        # Define the loss of a-network
-        # choose_action=self.a_network(states)
-        # Q_s_a=self.q_network(states,choose_action)
-        # a_loss = -tf.reduce_mean(Q_s_a)
-        # self.a_loss_model = Model(
-        #     inputs=states,
-        #     outputs=a_loss)
-
-        # Define the loss of q-network.
-        # Exploit act model
-        #self.exploit_model = Model(inputs=states, outputs=max_action)
-        self.exploit_model_target = Model(inputs=states, outputs=a_target_values) #for testing
-
-        # Softmax explore model
-        # softmax_scaling = tf.divide(q_values, tf.constant(self.params.soft_max_scaling, dtype=float))
-        # softmax_action = tf.math.softmax(softmax_scaling, name='softmax_action')
-        self.soft_explore_model = Model(inputs=states, outputs=a_values) #for training
+        # a_values=self.a_network.output
+        # a_target_values=self.targeta_network.output
+        # q_values = self.q_network.output
+        # q_target_values = self.targetq_network.output
+        # # Define the loss of a-network
+        # # choose_action=self.a_network(states)
+        # # Q_s_a=self.q_network(states,choose_action)
+        # # a_loss = -tf.reduce_mean(Q_s_a)
+        # # self.a_loss_model = Model(
+        # #     inputs=states,
+        # #     outputs=a_loss)
+        #
+        # # Define the loss of q-network.
+        # # Exploit act model
+        # #self.exploit_model = Model(inputs=states, outputs=max_action)
+        # self.exploit_model_target = Model(inputs=states, outputs=a_target_values) #for testing
+        #
+        # # Softmax explore model
+        # # softmax_scaling = tf.divide(q_values, tf.constant(self.params.soft_max_scaling, dtype=float))
+        # # softmax_action = tf.math.softmax(softmax_scaling, name='softmax_action')
+        # self.soft_explore_model = Model(inputs=states, outputs=a_values) #for training
 
         self.a_optimizer = tf.optimizers.Adam(learning_rate=params.actor_learning_rate, amsgrad=True)
         self.q_optimizer = tf.optimizers.Adam(learning_rate=params.critic_learning_rate, amsgrad=True)
-        self.a_loss:float = 0.0
-        self.c_loss:float = 0.0
 
         # if self.params.print_summary:
         #     self.a_loss_model.summary()
@@ -153,7 +147,6 @@ class DDPGAgent(object):
             # stats.add_log_data_callback('a_loss', self.get_a_loss())
 
 
-
     def build_actor_model(self, inputs, name=''):
         boolean_map_input = inputs[0]
         float_map_input = inputs[1]
@@ -163,11 +156,17 @@ class DDPGAgent(object):
         map_proc =padded_map
         states_proc=scalars_input
         flatten_map = self.create_map_proc(map_proc, name)
+        # layer = Concatenate(name=name + 'concat')([flatten_map, states_proc])
+        # for k in range(self.params.hidden_layer_num):
+        #     layer = Dense(self.params.hidden_layer_size, activation='relu', kernel_initializer=self.w_init, bias_initializer=self.b_init, name=name + 'hidden_layer_all_' + str(k))(
+        #         layer)
+        #     layer = BatchNormalization()(layer)
+        # output = Dense(self.num_actions, activation='tanh', name=name + 'output_layer')(layer)
         layer = Concatenate(name=name + 'concat')([flatten_map, states_proc])
         for k in range(self.params.hidden_layer_num):
-            layer = Dense(self.params.hidden_layer_size, activation='relu', kernel_initializer=self.w_init, bias_initializer=self.b_init, name=name + 'hidden_layer_all_' + str(k))(
+            layer = Dense(self.params.hidden_layer_size, activation='relu', name=name + 'hidden_layer_all_' + str(k))(
                 layer)
-        output = Dense(self.num_actions, activation='tanh', name=name + 'output_layer')(layer)
+        output = Dense(self.num_actions, activation='linear', name=name + 'output_layer')(layer)
 
         model = Model(inputs=inputs, outputs=output)
 
@@ -183,12 +182,17 @@ class DDPGAgent(object):
         map_proc = padded_map
         states_proc = scalars_input
         flatten_map = self.create_map_proc(map_proc, name)
-        layer = Concatenate()([flatten_map, states_proc])
-        layer= Concatenate(name=name + 'concat')([layer, actions])
+        #####################3
+        state_layer = Concatenate()([flatten_map, states_proc])
+        # action_layer=actions
+        # state_out = Dense(16, activation="relu")(state_layer)
+        # state_out = Dense(32, activation="relu")(state_out)
+        # action_out = Dense(32, activation="relu")(action_layer)
+        layer = Concatenate(name=name + 'concat')([state_layer, actions])
         for k in range(self.params.hidden_layer_num):
-            layer = Dense(self.params.hidden_layer_size, activation='relu', kernel_initializer=self.w_init, bias_initializer=self.b_init, name=name + 'hidden_layer_all_' + str(k))(
+            layer = Dense(self.params.hidden_layer_size, activation='relu', name=name + 'hidden_layer_all_' + str(k))(
                 layer)
-        output = Dense(1, activation='linear', name=name + 'output_layer')(layer)
+        output = Dense(self.num_actions, activation='linear', name=name + 'output_layer')(layer)
         model = Model(inputs=[states,actions], outputs=output)
         return model
 
@@ -213,9 +217,7 @@ class DDPGAgent(object):
             layer = Dense(self.params.hidden_layer_size, activation='relu', name=name + 'hidden_layer_all_' + str(k))(
                 layer)
         output = Dense(self.num_actions, activation='linear', name=name + 'output_layer')(layer)
-
         model = Model(inputs=inputs, outputs=output)
-
         return model
 
     def create_map_proc(self, conv_in, name):
@@ -250,15 +252,17 @@ class DDPGAgent(object):
         return Concatenate(name=name + 'concat_flatten')([flatten_global, flatten_local])
 
     def act(self, state):
-        var=self.var
+        #var=self.var
         a=self.get_soft_max_exploration(state)
         #print('the original action is :',a)
-        action_final = np.clip(np.random.normal(a, var), -1, 1)
-        return action_final
+        #action_final = np.clip(np.random.normal(a, var), -1, 1)
+
+        return a
 
 
     def get_random_action(self):
         output = np.random.uniform(-1, 1, size=self.num_actions)
+
         return output
     '''
     def get_exploitation_action(self, state):
@@ -279,7 +283,8 @@ class DDPGAgent(object):
 
         return self.exploit_model([boolean_map_in, float_map_in, scalars]).numpy()[0]
     '''
-    def get_soft_max_exploration(self, state): ###############for training
+
+    def get_soft_max_exploration(self, state):  ###############for training
         if self.params.blind_agent:
             scalars = np.array(state.get_scalars(give_position=True), dtype=np.single)[tf.newaxis, ...]
             action = self.soft_explore_model(scalars).numpy()[0]
@@ -294,19 +299,22 @@ class DDPGAgent(object):
             boolean_map_in = state.get_boolean_map()[tf.newaxis, ...]
             float_map_in = state.get_float_map()[tf.newaxis, ...]
             scalars = np.array(state.get_scalars(), dtype=np.single)[tf.newaxis, ...]
-            action = self.soft_explore_model([boolean_map_in, float_map_in, scalars]).numpy()[0]
+
+            action = self.a_network([boolean_map_in, float_map_in, scalars]).numpy()[0]
 
         return action
 
-    def get_exploitation_action_target(self, state): #################for test
+    def get_exploitation_action_target(self, state):  #################for test
 
         if self.params.blind_agent:
             scalars = np.array(state.get_scalars(give_position=True), dtype=np.single)[tf.newaxis, ...]
             return self.exploit_model_target(scalars).numpy()[0]
 
         if self.params.use_scalar_input:
-            devices_in = state.get_device_scalars(self.params.max_devices, relative=self.params.relative_scalars)[tf.newaxis, ...]
-            uavs_in = state.get_uav_scalars(self.params.max_uavs, relative=self.params.relative_scalars)[tf.newaxis, ...]
+            devices_in = state.get_device_scalars(self.params.max_devices, relative=self.params.relative_scalars)[
+                tf.newaxis, ...]
+            uavs_in = state.get_uav_scalars(self.params.max_uavs, relative=self.params.relative_scalars)[
+                tf.newaxis, ...]
             scalars = np.array(state.get_scalars(give_position=True), dtype=np.single)[tf.newaxis, ...]
 
             return self.exploit_model_target([devices_in, uavs_in, scalars]).numpy()[0]
@@ -315,7 +323,9 @@ class DDPGAgent(object):
         float_map_in = state.get_float_map()[tf.newaxis, ...]
         scalars = np.array(state.get_scalars(), dtype=np.single)[tf.newaxis, ...]
 
-        return self.exploit_model_target([boolean_map_in, float_map_in, scalars]).numpy()[0]
+        return self.targeta_network([boolean_map_in, float_map_in, scalars]).numpy()[0]
+
+
 
     def hard_update(self):#更新参数，只用于首次赋值，之后就没用
         self.targeta_network.set_weights(self.a_network.get_weights())
@@ -336,7 +346,7 @@ class DDPGAgent(object):
         float_map = experiences[1]
         scalars = tf.convert_to_tensor(experiences[2], dtype=tf.float32)
         action = tf.convert_to_tensor(experiences[3], dtype=tf.int64)
-        reward = experiences[4]
+        reward = tf.convert_to_tensor(experiences[4], dtype=tf.float32)
         next_boolean_map = experiences[5]
         next_float_map = experiences[6]
         next_scalars = tf.convert_to_tensor(experiences[7], dtype=tf.float32)
@@ -348,27 +358,29 @@ class DDPGAgent(object):
             a_ = self.targeta_network(batch_states_)
             q_ = self.targetq_network([batch_states_, a_])
             gamma_terminated = tf.multiply(tf.cast(tf.math.logical_not(terminated), tf.float32), self.gamma)
-            y = reward + gamma_terminated  * q_
+            y = reward + gamma_terminated  * tf.squeeze(q_,axis=1)
             q = self.q_network([batch_states, action])
-            td_error = tf.losses.mean_squared_error(y, q)
-            self.c_loss=td_error
-        c_grads = tape.gradient(td_error, self.q_network.trainable_weights)
+            # td_error = tf.losses.mean_squared_error(y, q)
+            # import pdb
+            # pdb.set_trace()
+            critic_loss = tf.math.reduce_mean(tf.math.square(y - tf.squeeze(q,axis=1)))
+            # print(td_error)
+            # print(critic_loss)
+            # self.c_loss=tf.reduce_mean(critic_loss)
+        c_grads = tape.gradient(critic_loss, self.q_network.trainable_weights)
         self.q_optimizer.apply_gradients(zip(c_grads, self.q_network.trainable_weights))
 
         with tf.GradientTape() as tape:
             a=self.a_network(batch_states)
             q=self.q_network([batch_states,a])
             a_loss=-tf.reduce_mean(q)
+            # import pdb
+            # pdb.set_trace()
             self.a_loss = a_loss
+
         a_grads = tape.gradient(a_loss, self.a_network.trainable_weights)
         self.a_optimizer.apply_gradients(zip(a_grads, self.a_network.trainable_weights))
         self.soft_update(self.params.alpha)
-
-    def get_c_loss(self):
-        return self.c_loss
-
-    def get_a_loss(self):
-        return self.a_loss
 
 
     def save_weights(self, path_to_weights):

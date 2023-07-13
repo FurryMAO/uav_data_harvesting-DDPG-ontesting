@@ -1,8 +1,9 @@
 import copy
 import distutils.util
+import pdb
 
 import tqdm
-
+import tensorflow as tf
 # from src.DDQN.Agent import DDQNAgentParams, DDQNAgent
 # from src.DDQN.Trainer import DDQNTrainerParams, DDQNTrainer
 from src.DDPG.Agent import DDPGAgentParams, DDPGAgent
@@ -13,7 +14,7 @@ from src.Physics import PhysicsParams, Physics
 from src.Rewards import RewardParams, Rewards
 from src.State import State
 from src.base.Environment import BaseEnvironment, BaseEnvironmentParams
-from src.base.ContinueActions import ContinueAction
+from src.base.ContinueActions import ContinueActions
 
 
 class EnvironmentParams(BaseEnvironmentParams):
@@ -56,22 +57,28 @@ class Environment(BaseEnvironment):
                 action = self.agent.get_exploitation_action_target(state)
                 if not first_action:
                     reward = self.rewards.calculate_reward(self.last_states[state.active_agent],
-                                                           ContinueAction(self.last_actions[state.active_agent]), state)
+                                                           ContinueActions(self.last_actions[state.active_agent]), state)
                     self.stats.add_experience(
                         (self.last_states[state.active_agent], self.last_actions[state.active_agent], reward,
                          copy.deepcopy(state)))
 
                 self.last_states[state.active_agent] = copy.deepcopy(state)
                 self.last_actions[state.active_agent] = action
-                state = self.physics.step(ContinueAction(action))
+                state = self.physics.step(ContinueActions(action))
                 if state.terminal:
                     reward = self.rewards.calculate_reward(self.last_states[state.active_agent],
-                                                           ContinueAction(self.last_actions[state.active_agent]), state)
+                                                           ContinueActions(self.last_actions[state.active_agent]), state)
                     self.stats.add_experience(
                         (self.last_states[state.active_agent], self.last_actions[state.active_agent], reward,
                          copy.deepcopy(state)))
 
             first_action = False
+
+        # if self.episode_count% 5 == 0:
+        #     print(self.agent.a_loss)
+        #     print(self.agent.c_loss)
+        tf.summary.scalar('c_loss', self.agent.c_loss, step=self.step_count)
+        tf.summary.scalar('a_loss', self.agent.a_loss, step=self.step_count)
         self.stats.on_episode_end(self.episode_count)
         self.stats.log_testing_data(step=self.step_count)
 
@@ -82,9 +89,11 @@ class Environment(BaseEnvironment):
                 if state.terminal:
                     continue
                 action = self.agent.get_exploitation_action_target(state)
-                state = self.physics.step(ContinueAction(action))
+                state = self.physics.step(ContinueActions(action))
 
     def step(self, state: State, random=False):
+        # import pdb
+        # pdb.set_trace()
         for state.active_agent in range(state.num_agents):
             if state.terminal:
                 continue
@@ -92,9 +101,12 @@ class Environment(BaseEnvironment):
                 action = self.agent.get_random_action()
             else:
                 action = self.agent.act(state)
+                # print('we choose the action:',action)
+                # print(ContinueActions(action))
             if not self.first_action:
                 reward = self.rewards.calculate_reward(self.last_states[state.active_agent],
-                                                       ContinueAction(self.last_actions[state.active_agent]), state)
+                                                       ContinueActions(self.last_actions[state.active_agent]), state)
+
                 self.trainer.add_experience(self.last_states[state.active_agent], self.last_actions[state.active_agent],
                                             reward, state)
                 self.stats.add_experience(
@@ -104,10 +116,10 @@ class Environment(BaseEnvironment):
             self.last_states[state.active_agent] = copy.deepcopy(state)
             self.last_actions[state.active_agent] = action
             #print("the action is ::::::::", action)
-            state = self.physics.step(ContinueAction(action))
+            state = self.physics.step(ContinueActions(action))
             if state.terminal:
                 reward = self.rewards.calculate_reward(self.last_states[state.active_agent],
-                                                       ContinueAction(self.last_actions[state.active_agent]), state)
+                                                       ContinueActions(self.last_actions[state.active_agent]), state)
                 self.trainer.add_experience(self.last_states[state.active_agent], self.last_actions[state.active_agent],
                                             reward, state)
                 self.stats.add_experience(

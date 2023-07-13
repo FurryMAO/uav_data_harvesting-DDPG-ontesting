@@ -59,16 +59,18 @@ class Grid(BaseGrid):
         state.reset_devices(self.device_list)
 
         if self.params.fixed_starting_idcs:
-            idx = self.params.starting_idcs
+            state.positions = self.params.starting_position
         else:
             # Replace False insures that starting positions of the agents are different
             idx = np.random.choice(len(self.starting_vector), size=self.num_agents, replace=False)
-        state.positions = [self.starting_vector[i] for i in idx]
-
-        state.movement_budgets = np.random.randint(low=self.params.movement_range[0],
+            state.positions = [self.starting_vector[i] for i in idx]
+        if self.params.fixed_movement_range:
+            state.movement_budgets=np.full((self.num_agents,), self.params.movement_data)
+            state.initial_movement_budgets = state.movement_budgets.copy()
+        else:
+            state.movement_budgets = np.random.randint(low=self.params.movement_range[0],
                                                    high=self.params.movement_range[1] + 1, size=self.num_agents)
-
-        state.initial_movement_budgets = state.movement_budgets.copy()
+            state.initial_movement_budgets = state.movement_budgets.copy()
 
         return state
 

@@ -3,7 +3,7 @@ import numpy as np
 from src.Channel import ChannelParams, Channel
 from src.State import State
 from src.ModelStats import ModelStats
-from src.base.ContinueActions import ContinueAction
+from src.base.ContinueActions import ContinueActions
 from src.base.ContinuePhysics import ContinuePhysics
 
 
@@ -34,24 +34,35 @@ class Physics(ContinuePhysics):
         stats.add_log_data_callback('boundary_counter', self.get_boundary_counter)
         stats.add_log_data_callback('landing_attempts', self.get_landing_attempts)
         stats.add_log_data_callback('movement_ratio', self.get_movement_ratio)
-        stats.add_log_data_callback('battery_consumution', self.get_movement_budget_used)
+        stats.add_log_data_callback('flying_time', self.get_movement_budget_used)
 
     def reset(self, state: State):
         ContinuePhysics.reset(self, state)
 
         self.channel.reset(self.state.shape[0])
 
-    def step(self, action: ContinueAction):
+    def step(self, action: ContinueActions):
         old_position = self.state.position
-        self.movement_step(action)
+        self.movement_step(old_position, action.angle)
         if not self.state.terminal:
             self.comm_step(old_position)
 
         return self.state
 
     def comm_step(self, old_position):
-        positions = list(
-            reversed(np.linspace(self.state.position, old_position, num=self.params.comm_steps, endpoint=False)))
+
+        # print('-------------------')
+        # print('old_pos=',old_position)
+        # print("new_pos=",self.state.position)
+        x_values = np.linspace(self.state.position[0], old_position[0], num=self.params.comm_steps, endpoint=False)
+        y_values = np.linspace(self.state.position[1], old_position[1], num=self.params.comm_steps, endpoint=False)
+
+        positions = list(reversed(np.column_stack((x_values, y_values))))
+
+
+
+        # positions = list(
+        #     reversed(np.linspace(self.state.position, old_position, num=self.params.comm_steps, endpoint=False)))
 
         indices = []
         device_list = self.state.device_list
@@ -69,9 +80,8 @@ class Physics(ContinuePhysics):
         return idx
 
     def get_example_action(self):
-        dx=0
-        dy=0
-        action=[dx,dy]
+        angle=0
+        action = [angle]
         return action
 
     def is_in_landing_zone(self):

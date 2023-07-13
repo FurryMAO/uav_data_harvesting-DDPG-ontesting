@@ -40,6 +40,7 @@ class Channel:
         return rate
 
     def compute_rate(self, uav_pos, device_pos):
+        #print('uav_pos:',uav_pos)
         dist = np.sqrt(
             ((device_pos[0] - uav_pos[0]) * self.params.cell_size) ** 2 +
             ((device_pos[1] - uav_pos[1]) * self.params.cell_size) ** 2 +

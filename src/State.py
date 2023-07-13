@@ -66,8 +66,8 @@ class State(BaseState):
     def set_position(self, position):
         self.positions[self.active_agent] = position
 
-    def decrement_movement_budget(self,dx,dy):
-        self.movement_budgets[self.active_agent] -= np.sqrt(dx**2+dy**2)
+    def decrement_movement_budget(self):
+        self.movement_budgets[self.active_agent] -= 1.0
 
     def set_terminal(self, terminal):
         self.terminals[self.active_agent] = terminal
@@ -125,16 +125,16 @@ class State(BaseState):
     def is_in_landing_zone(self):
         position_x_index = int(np.round(self.position[0]))
         position_y_index = int(np.round(self.position[1]))
-        return self.landing_zone[position_y_index][position_x_index]
+        if 0 <= position_y_index  < self.landing_zone.shape[0] and 0 <= position_x_index  < self.landing_zone.shape[1]:
+            return self.landing_zone[position_y_index][position_x_index]
 
     #改了一下position的参数近似
     def is_in_no_fly_zone(self):
         # Out of bounds is implicitly nfz
-        position_x_index = int(np.round(self.position[0]))
-        position_y_index = int(np.round(self.position[1]))
-        if 0 <= position_y_index  < self.no_fly_zone.shape[0] and 0 <= position_x_index  < self.no_fly_zone.shape[1]:
+        if 0 <= self.position[0]< self.no_fly_zone.shape[0]-0.5 and 0 <= self.position[1] < self.no_fly_zone.shape[1]-0.5:
+            position_x_index = int(np.round(self.position[0]))
+            position_y_index = int(np.round(self.position[1]))
             # NFZ or occupied
-
             return self.no_fly_zone[position_y_index, position_x_index]  or self.is_occupied()
         return True
 
@@ -149,6 +149,12 @@ class State(BaseState):
             if pos == self.position:
                 return True
         return False
+
+    def get_c_loss(self):
+        return self.c_loss
+
+    def get_a_loss(self):
+        return self.a_loss
 
     def get_collection_ratio(self):
         return np.sum(self.collected) / self.initial_total_data
