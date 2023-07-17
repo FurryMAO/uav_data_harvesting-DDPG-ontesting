@@ -156,12 +156,6 @@ class DDPGAgent(object):
         map_proc =padded_map
         states_proc=scalars_input
         flatten_map = self.create_map_proc(map_proc, name)
-        # layer = Concatenate(name=name + 'concat')([flatten_map, states_proc])
-        # for k in range(self.params.hidden_layer_num):
-        #     layer = Dense(self.params.hidden_layer_size, activation='relu', kernel_initializer=self.w_init, bias_initializer=self.b_init, name=name + 'hidden_layer_all_' + str(k))(
-        #         layer)
-        #     layer = BatchNormalization()(layer)
-        # output = Dense(self.num_actions, activation='tanh', name=name + 'output_layer')(layer)
         layer = Concatenate(name=name + 'concat')([flatten_map, states_proc])
         for k in range(self.params.hidden_layer_num):
             layer = Dense(self.params.hidden_layer_size, activation='relu', name=name + 'hidden_layer_all_' + str(k))(
@@ -169,7 +163,7 @@ class DDPGAgent(object):
         output = Dense(self.num_actions, activation='linear', name=name + 'output_layer')(layer)
 
         model = Model(inputs=inputs, outputs=output)
-
+        model.summary()
         return model
 
     #########################################加一个critic的网络##########################
@@ -184,16 +178,13 @@ class DDPGAgent(object):
         flatten_map = self.create_map_proc(map_proc, name)
         #####################3
         state_layer = Concatenate()([flatten_map, states_proc])
-        # action_layer=actions
-        # state_out = Dense(16, activation="relu")(state_layer)
-        # state_out = Dense(32, activation="relu")(state_out)
-        # action_out = Dense(32, activation="relu")(action_layer)
         layer = Concatenate(name=name + 'concat')([state_layer, actions])
         for k in range(self.params.hidden_layer_num):
             layer = Dense(self.params.hidden_layer_size, activation='relu', name=name + 'hidden_layer_all_' + str(k))(
                 layer)
         output = Dense(self.num_actions, activation='linear', name=name + 'output_layer')(layer)
         model = Model(inputs=[states,actions], outputs=output)
+        model.summary()
         return model
 
     #########################################加一个critic的网络##########################

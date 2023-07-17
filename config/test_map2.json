@@ -7,7 +7,7 @@
     },
     "grid_params": {
         "fixed_starting_idcs": true,
-        "starting_position": [[6,2]],
+        "starting_position": [[7,14]],
         "fixed_movement_range": true,
         "movement_data": 100.0,
         "movement_range": [
@@ -55,7 +55,7 @@
         "boundary_penalty": 1.0,
         "empty_battery_penalty": 100.0,
         "data_multiplier": 1.0,
-        "movement_penalty": 0.01
+        "movement_penalty": 0.1
     },
 
     "trainer_params": {
@@ -64,7 +64,7 @@
         "rm_pre_fill_ratio": 0.5,
         "rm_pre_fill_random": true,
         "eval_period": 5,
-        "rm_size": 60000,
+        "rm_size": 50000,
         "load_model": ""
     },
 
@@ -74,9 +74,9 @@
         "conv_kernels": 16,
         "hidden_layer_size": 256,
         "hidden_layer_num": 3,
-        "actor_learning_rate": 0.01,
-        "critic_learning_rate": 0.02,
-        "rm_size": 60000,
+        "actor_learning_rate": 3e-04,
+        "critic_learning_rate": 3e-03,
+        "rm_size": 50000,
         "alpha": 0.005,
         "gamma": 0.95,
         "var": 0.01,
